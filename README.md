@@ -2,6 +2,7 @@
 Full page cache + Lazy load for laravel5
 
 Setup
+
 1. Put Ycc folder into your App folder
 
 2. Edit config/app.php
