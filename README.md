@@ -1,8 +1,9 @@
 # laravel_fullpagecache
 Full page cache + Lazy load for laravel5
 
-Step up
+Setup
 1. Put Ycc folder into your App folder
+
 2. Edit config/app.php
 	put 'App\Ycc\FpCacheServiceProvider', into provider;
 	put 'Fpcache'  => 'App\Ycc\Facades\Fpcache', into alias
