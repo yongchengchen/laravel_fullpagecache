@@ -14,42 +14,65 @@ class ViewParser
 	public function injectBlade()
 	{
 		$blade = $this->app['view']->getEngineResolver()->resolve('blade')->getCompiler();
+		$app = $this->app;
+		$blade->extend(function ($view, $blade) use($app) {
+			$pattern = $blade->createOpenMatcher('lazyview');
 
-		if ($this->app['Fpcache.component']->inUse()){
-			$blade->extend(function ($view, $blade){
-				$pattern = $blade->createOpenMatcher('lazyview');
-				$replace = '<?php echo App\Ycc\Facades\Fpcache::lazyview$2, function() { ?>';
-				$view    = preg_replace($pattern, $replace, $view);
+			$newview = $view;
+			$pickpattern = rtrim($pattern, "/") . "(.|\\n)*?@endlazyview/";
+			if (preg_match_all($pickpattern, $newview, $matchs)){
+				$newview = "";
+				foreach($matchs[0] as $match){
+					$newview .= $match;
+				}
+				$replace = '<?php echo App\Ycc\Facades\Fpcache::lazytag$2);?>';
+				$newview = preg_replace($pattern, $replace, $newview);
+				$newview = str_replace('@endlazyview', '</span>', $newview);
+			} else {
+				$newview = "";
+			}
 
-				// Replace closing tag
-				$view = str_replace('@endlazyview', '<?php }); ?>', $view);
-				$view = str_replace('Auth::guest()', 'true', $view);  //for cached page,lazyload first always return guest
-				return $view;
-			});
-		}
+			#$replace = $app['config']->get('fpcache')['jslib'];
+			$replace = '<?php echo App\Ycc\Facades\Fpcache::lazytag$2);?>';
+			$view    = preg_replace($pattern, $replace, $view);
+			$replace = $app['config']->get('fpcache')['jslib'] 
+				. " <script>g_lazy.load('" 
+				. $app['Fpcache.component']->getCurrentUrl("_load_no_cache_diff_=1") 
+				."');</script></body>";
+			$view    = str_replace("</body>", $replace , $view);
+
+			// Replace closing tag
+			$view = str_replace('@endlazyview', '</span>', $view);
+			$view = str_replace('Auth::guest()', 'true', $view);  //for cached page,lazyload first always return guest
+			$view = '<?php if(!App\Ycc\Facades\Fpcache::loadDiff()){ ?>'
+				. $view 
+				. " <?php } else { echo '<!-- load diff --><br>';?>" 
+				. $newview . " <?php } ?>";
+		
+			return $view;
+		});
 	}
 
-	public function lazyview($name, $lifetime, $contents = null)
+	public function lazytag($name)
         {
-                if (!$contents) {
-                        $contents = $lifetime;
-                        $lifetime = $this->app['Fpcache.cache']->getLifetime();
-                }
-
-		$tagname = $this->formatTagName($name);
-                return $this->app['cache']->remember($tagname, $lifetime, function () use ($tagname, $contents) {
-                        ob_start();
-			echo "<span id='$sectionname'>"; //for lazyload javascript to rewrite this section
-                        echo $contents();
-			echo "</span>";
-                        return ob_get_clean();
-                });
+		#if ($this->app['Fpcache.component']->inUse()){
+			//for lazyload javascript to rewrite this section
+			$name = $this->formatTagName($name);
+			if ($this->loadDiff()){
+				$lazyApply ="<script>g_lazy.replaceElement('#$name', '#$name"."L');</script>";
+				$name .= "L";
+				return "$lazyApply<span style='display:none' id='$name'>";
+			}
+			return "<span id='$name'>";
+                #}
         }
+
+	public function loadDiff(){
+		return $this->app['request']->request->get("_load_no_cache_diff_");
+	}
 
 	protected function formatTagName($name)
         {
-                return 'lazyload-'.$name;
+                return 'lazyload-'. $name ;
         }
-
-
 }

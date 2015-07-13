@@ -2,9 +2,11 @@
 return [
 	'enabled' => true,
 
-	'blacklist'       => array(),
+	'blacklist'       => array("/auth/login"),
 
 	'whitelist'         => array(),
 
 	'lifetime'     => 0,
+
+	'jslib'     => '<script src="/js/lazypart.js"></script>',
 ];

@@ -23,36 +23,37 @@ class Component
 		if ($this->app['request']->isXmlHttpRequest() || $this->app['request']->getMethod() !== 'GET') {
 			return false;
 		}
+		if ($this->app['request']->request->get("_load_no_cache_diff_")){ return false;}
 
-		$whitelist = $fpcacheconfig['whitelist'];
-		$blacklist = $fpcacheconfig['blacklist'];
+		$whitelist = $this->app['cache']->remember("fpcache.whitelist", 10, function() use($fpcacheconfig){
+			return '#|'.implode('|', $fpcacheconfig['whitelist']).'|#';
+		});
+		$blacklist = $this->app['cache']->remember("fpcache.blacklist", 10, function() use($fpcacheconfig){
+			return '#|'.implode('|', $fpcacheconfig['blacklist']).'|#';
+		});
 
-		if (empty($whitelist) && empty($blacklist)) {
-			return true;
-		} else {
-			if (!empty($blacklist) && $this->matches($blacklist)) {
-				return false;
-			}
-			if (!empty($whitelist) && $this->matches($whitelist)) {
-				return true;	
-			}
+		if ($this->hit($blacklist)) {
+			return false;
 		}
-		return false;
+		if ($this->hit($whitelist)) {
+			return true;	
+		}
+		return true;
 	}
 
-	public function matches($pages)
+	protected function hit($pages)
 	{
-		$page    = $this->getCurrentUrl();
-		$pattern = '#'.implode('|', $pages).'#';
-
-		return (bool) preg_match($pattern, $page);
+		return (bool) strpos($pages, "|" . $this->getCurrentUrl() . "|");
 	}
 
-	public function getCurrentUrl()
+	public function getCurrentUrl($more=null)
 	{
 		$path  = '/'.ltrim($this->app['request']->path(), '/');
 		$query = $this->app['request']->getQueryString();
 
+		if ($query || $more){
+			$query .= "&$more";
+		}
 		return $query ? $path.'?'.$query : $path;
 	}
 }
