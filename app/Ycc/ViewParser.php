@@ -37,7 +37,8 @@ class ViewParser
 			$view    = preg_replace($pattern, $replace, $view);
 			$replace = $app['config']->get('fpcache')['jslib'] 
 				. " <script>g_lazy.load('" 
-				. $app['Fpcache.component']->getCurrentUrl("_load_no_cache_diff_=1") 
+				#. $app['Fpcache.component']->getCurrentUrl("_load_no_cache_diff_=1") 
+				. "<?php echo App\Ycc\Facades\Fpcache::renewUrl() ?>"
 				."');</script></body>";
 			$view    = str_replace("</body>", $replace , $view);
 
@@ -65,6 +66,10 @@ class ViewParser
 			}
 			return "<span id='$name'>";
                 #}
+        }
+        
+        public function renewUrl(){
+                 return $this->app['Fpcache.component']->getCurrentUrl("_load_no_cache_diff_=1");
         }
 
 	public function loadDiff(){
